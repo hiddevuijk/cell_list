@@ -9,7 +9,7 @@ LFLAGS = -Wall -O3 -DNDEBUG
 $(TARGET): $(OBJS)
 	$(CC) $(LFLAGS) $(OBJS) -o $(TARGET)
 
-main.o: main.cpp vec3.h config_file.h systemBD.h density.h
+main.o: main.cpp vec3.h config_file.h systemBD.h density.h cell_list.h
 	$(CC) $(CFLAGS) main.cpp
 
 
