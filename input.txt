@@ -1,0 +1,24 @@
+D = 1.0
+gamma = 1.0
+seed = 123456789
+
+N = 300
+system_size_x = 10.0
+system_size_y = 10.0
+system_size_z = -1
+
+
+dt = 1e-3
+
+verlet_list_radius = 1.15
+
+equilibration_time = 0
+time_between_samples = 0.05
+number_of_samples = 100
+
+number_of_bins = 1000
+bin_size = 0.1
+
+zmin = -40
+zmax = 40
+
