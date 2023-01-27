@@ -2,11 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sys import exit
 
+Lx = 10.0
+Ly = 10.0
+positions = np.loadtxt("positions.dat")
 
-gr = np.loadtxt("data/gr.dat")
+for pi in positions:
+    x = pi[0]
+    y = pi[1]
+    x -= Lx * np.floor(x / Lx)
+    y -= Ly * np.floor(y / Ly)
+    plt.scatter(x,y)
 
-r = gr[:,0]
-y = gr[:,1]
-
-plt.plot(r,y)
 plt.show()
+

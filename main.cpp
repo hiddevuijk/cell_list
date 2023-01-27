@@ -12,6 +12,7 @@
 #include "cell_list.h"
 
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <string>
 
@@ -25,27 +26,42 @@ int main()
 
   Config params("input.txt");
 
-  double system_size_x =
+  double Lx =
 		params.get_parameter<double>("system_size_x");
-  double system_size_y =
+  double Ly =
 		params.get_parameter<double>("system_size_y");
-  double system_size_z =
+  double Lz =
 		params.get_parameter<double>("system_size_z");
 
 
-  double verlet_list_radius =
-		params.get_parameter<double>("verlet_list_radius");
+  double r_verlet = 1.01;
+  
+  vector<Vec3> positions;
+  positions.push_back( Vec3(0,0,0));
+  positions.push_back( Vec3(1.002, 0.0, 0.0));
+
+  vector<list<unsigned int> > neighbor_list =  
+      get_neighbor_list(Lx,Ly,Lz,r_verlet,positions);
+
+  ofstream pout;
+  pout.open("positions.dat");
+  for (unsigned i = 0; i < positions.size(); ++i) {
+    pout << positions[i]. x << "\t" 
+         << positions[i]. y << "\t" 
+         << positions[i]. z << "\n" ;
+  }
+  pout.close();
 
 
-  std::vector<Vec3> positions = read_positions("positions.dat");
-
-  std::vector<std::vector<unsigned int> > neighbor_list; 
-  std::vector<unsigned int> n_neighbor_list; 
-
-  get_neighbor_list2(system_size_x, system_size_y, system_size_z,
-            verlet_list_radius,
-            positions, neighbor_list, n_neighbor_list);
-
+  for (unsigned int i=0 ; i< positions.size(); ++i) {
+    cout << i << ": \t"; 
+    for( list<unsigned int>::iterator it =
+                            neighbor_list[i].begin();
+        it != neighbor_list[i].end(); ++it) {
+      cout << *it << " ";  
+    }
+    cout << "\n";
+  }
   
   return 0;
 }
