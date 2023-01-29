@@ -10,6 +10,8 @@
 #include "read_positions.h"
 
 #include "cell_list.h"
+#include "verlet_list.h"
+
 
 #include <iostream>
 #include <fstream>
@@ -34,24 +36,15 @@ int main()
 		params.get_parameter<double>("system_size_z");
 
 
-  double r_verlet = 1.01;
+  double r_verlet = 1.2;
+  bool double_bond = false;
   
-  vector<Vec3> positions;
-  positions.push_back( Vec3(0,0,0));
-  positions.push_back( Vec3(1.002, 0.0, 0.0));
+  vector<Vec3> positions = read_positions("positions.dat");
 
-  vector<list<unsigned int> > neighbor_list =  
-      get_neighbor_list(Lx,Ly,Lz,r_verlet,positions);
-
-  ofstream pout;
-  pout.open("positions.dat");
-  for (unsigned i = 0; i < positions.size(); ++i) {
-    pout << positions[i]. x << "\t" 
-         << positions[i]. y << "\t" 
-         << positions[i]. z << "\n" ;
+  vector<list<unsigned int> > neighbor_list;
+  for (unsigned int i = 0; i < 100; ++i) {
+  neighbor_list = get_neighbor_list(Lx,Ly,Lz,r_verlet,positions, double_bond);
   }
-  pout.close();
-
 
   for (unsigned int i=0 ; i< positions.size(); ++i) {
     cout << i << ": \t"; 
@@ -59,6 +52,21 @@ int main()
                             neighbor_list[i].begin();
         it != neighbor_list[i].end(); ++it) {
       cout << *it << " ";  
+    }
+    cout << "\n";
+  }
+
+  vector<vector<unsigned int> > verlet_list;
+  vector<unsigned int> n_neighbors;
+  for (unsigned int i = 0; i < 100; ++i) {
+    get_verlet_list(Lx,Ly,Lz,r_verlet,positions,verlet_list,n_neighbors, double_bond);
+  }
+
+
+  for (unsigned int i=0; i<positions.size(); ++i) {
+    cout << i << ":\t";
+    for(unsigned int ni=0; ni < n_neighbors[i]; ++ni) {
+      cout << verlet_list[i][ni] << " ";
     }
     cout << "\n";
   }

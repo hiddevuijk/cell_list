@@ -8,6 +8,9 @@
 
 // returns the distance between the two vectors a and b
 // taking into account the periodic boundary conditions
+// If double_bond == true, then each neighbor pair occurs
+//   twice in the neighbor list. If false, each bond 
+//   occurse twice.
 double dist2(Vec3 a, Vec3 b, double Lx, double Ly, double Lz)
 {
   a-= b;
@@ -53,7 +56,8 @@ typedef std::vector<std::list<unsigned int> > VecList;
 VecList get_neighbor_list(
     double Lx, double Ly, double Lz,
     double r_verlet,
-    const std::vector<Vec3>& positions)
+    const std::vector<Vec3>& positions,
+    bool double_bond)
 {
 
   unsigned int n_particles = positions.size();
@@ -89,15 +93,19 @@ VecList get_neighbor_list(
   for (unsigned int pi = 0; pi < n_particles; ++pi) {
     p = positions[pi]; 
 
+    p.x -= Lx * floor( p.x / Lx);
+    p.y -= Ly * floor( p.y / Ly);
+    p.z -= Lz * floor( p.z / Lz);
+
     ci.xi = std::floor(p.x / delta_x);
     // periodic boundary conditions
-    ci.xi = ci.xi % n_cells_x;
+    //ci.xi = ci.xi % n_cells_x;
 
     ci.yi = std::floor(p.y / delta_y);
-    ci.yi = ci.yi % n_cells_y;
+    //ci.yi = ci.yi % n_cells_y;
 
     ci.zi = std::floor(p.z / delta_z);
-    ci.zi = ci.zi % n_cells_z;
+    //ci.zi = ci.zi % n_cells_z;
 
     // add particle pi to cell ci
     cell_list[ci.xi][ci.yi][ci.zi].push_back(pi);
@@ -157,11 +165,13 @@ VecList get_neighbor_list(
            it != cell_list[cj.xi][cj.yi][cj.zi].end();
            ++it) {
         
-        // if index of pj (other particle) > pi
-        // and dist(pi,pj) < rc, then add to neighbor_list
           pj = *it; 
-          if (pj != pi and
-              dist2(positions[pj],positions[pi], Lx, Ly, Lz)
+          if ( (double_bond == false and pi >= pj)
+                or (pi == pj) ) {
+
+            continue;
+
+          }else if (dist2(positions[pj],positions[pi], Lx, Ly, Lz)
                   < r_verlet*r_verlet) {
 
             neighbor_list[pi].push_back(pj);
