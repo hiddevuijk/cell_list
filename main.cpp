@@ -9,8 +9,7 @@
 #include "density.h"
 #include "read_positions.h"
 
-#include "cell_list.h"
-#include "verlet_list.h"
+#include "neighbor_list.h"
 
 
 #include <iostream>
@@ -37,14 +36,16 @@ int main()
 
 
   double r_verlet = 1.2;
-  bool double_bond = false;
+  bool double_bond = true;
   
   vector<Vec3> positions = read_positions("positions.dat");
 
   vector<list<unsigned int> > neighbor_list;
   for (unsigned int i = 0; i < 100; ++i) {
-  neighbor_list = get_neighbor_list(Lx,Ly,Lz,r_verlet,positions, double_bond);
+    //neighbor_list = get_neighbor_list(Lx,Ly,Lz,r_verlet,positions, double_bond);
+    neighbor_list = get_verlet_list(Lx,Ly,Lz,r_verlet,positions,double_bond);
   }
+
 
   for (unsigned int i=0 ; i< positions.size(); ++i) {
     cout << i << ": \t"; 
@@ -56,20 +57,6 @@ int main()
     cout << "\n";
   }
 
-  vector<vector<unsigned int> > verlet_list;
-  vector<unsigned int> n_neighbors;
-  for (unsigned int i = 0; i < 100; ++i) {
-    get_verlet_list(Lx,Ly,Lz,r_verlet,positions,verlet_list,n_neighbors, double_bond);
-  }
-
-
-  for (unsigned int i=0; i<positions.size(); ++i) {
-    cout << i << ":\t";
-    for(unsigned int ni=0; ni < n_neighbors[i]; ++ni) {
-      cout << verlet_list[i][ni] << " ";
-    }
-    cout << "\n";
-  }
   
   return 0;
 }
