@@ -10,23 +10,36 @@
 // taking into account the periodic boundary conditions
 // If double_bond == true, then each neighbor pair occurs
 //   twice in the neighbor list. If false, each bond 
-//   occurse twice.
-double dist2(Vec3 a, Vec3 b, double Lx, double Ly, double Lz)
+//   occurs twice.
+double dist2(Vec3 a, Vec3 b, double Lx, double Ly, double Lz,
+              bool pbc_x, bool pbc_y, bool pbc_z)
 {
   a-= b;
-  a.x -= Lx * std::round( a.x / Lx);
-  a.y -= Ly * std::round( a.y / Ly);
-  a.z -= Ly * std::round( a.z / Lz);
+  //if (pbc_x) a.x -= Lx * std::round( a.x / Lx);
+  //if (pbc_y) a.y -= Ly * std::round( a.y / Ly);
+  //if (pbc_z) a.z -= Lz * std::round( a.z / Lz);
+  if (pbc_x) {
+    a.x = fabs(a.x);
+    a.x -= static_cast<int>(a.x / Lx +  0.5) * Lx;
+  }
+  if (pbc_y) {
+    a.y = fabs(a.y);
+    a.y -= static_cast<int>(a.y / Ly +  0.5) * Ly;
+  }
+  if (pbc_z) {
+    a.z = fabs(a.z);
+    a.z -= static_cast<int>(a.z / Lz +  0.5) * Lz;
+  }
+
   return a.LengthSquared();
 }
-
 
 // Contains the three indices that specify the cell
 // that a particle is in
 struct TripleIndex {
   TripleIndex() : xi(0), yi(0), zi(0) {};
 
-  TripleIndex(unsigned int xi,unsigned  int yi,unsigned  int zi)
+  TripleIndex(unsigned int xi, unsigned int yi, unsigned int zi)
     : xi(xi), yi(yi), zi(zi) {};
 
   unsigned int xi, yi, zi;
@@ -47,7 +60,7 @@ typedef std::vector<std::list<unsigned int> > VecList;
 //  the i'th element of the neighbor list is a list
 //  that contains j, but  the j'th element of the neighbor list
 //  does not contain i.
-// The inputs are the 
+// The inputs are
 //   Lx, Ly, Lz: the x,y,z dimensions of the box,
 //    with (x=0, y=0,z=0) in a corner of the box.
 //   r_verlet: radius of the neighbor list
@@ -55,9 +68,10 @@ typedef std::vector<std::list<unsigned int> > VecList;
 //
 VecList get_neighbor_list(
     double Lx, double Ly, double Lz,
+    bool pbc_x, bool pbc_y, bool pbc_z,
+    bool double_bond,
     double r_verlet,
-    const std::vector<Vec3>& positions,
-    bool double_bond)
+    const std::vector<Vec3>& positions)
 {
 
   unsigned int n_particles = positions.size();
@@ -93,19 +107,17 @@ VecList get_neighbor_list(
   for (unsigned int pi = 0; pi < n_particles; ++pi) {
     p = positions[pi]; 
 
-    p.x -= Lx * floor( p.x / Lx);
-    p.y -= Ly * floor( p.y / Ly);
-    p.z -= Lz * floor( p.z / Lz);
+    if (pbc_x) p.x -= Lx * floor( p.x / Lx);
+    if (pbc_y) p.y -= Ly * floor( p.y / Ly);
+    if (pbc_z) p.z -= Lz * floor( p.z / Lz);
 
-    ci.xi = std::floor(p.x / delta_x);
-    // periodic boundary conditions
-    //ci.xi = ci.xi % n_cells_x;
+    //ci.xi = floor(p.x / delta_x);
+    //ci.yi = floor(p.y / delta_y);
+    //ci.zi = floor(p.z / delta_z);
 
-    ci.yi = std::floor(p.y / delta_y);
-    //ci.yi = ci.yi % n_cells_y;
-
-    ci.zi = std::floor(p.z / delta_z);
-    //ci.zi = ci.zi % n_cells_z;
+    ci.xi = static_cast<unsigned int>(p.x / delta_x);
+    ci.yi = static_cast<unsigned int>(p.y / delta_y);
+    ci.zi = static_cast<unsigned int>(p.z / delta_z);
 
     // add particle pi to cell ci
     cell_list[ci.xi][ci.yi][ci.zi].push_back(pi);
@@ -128,35 +140,37 @@ VecList get_neighbor_list(
     ci = particles_cell_index[pi];
     //loop over cells that are neighbors of ci
     for (int dcxi = -1; dcxi <= 1; ++dcxi){
+      if  (ci.xi == 0 and dcxi == -1) {
+        if (pbc_x) cj.xi = n_cells_x -1;
+        else continue;
+      } else if(ci.xi == n_cells_x -1 and dcxi == 1) {
+        if (pbc_x) cj.xi = 0;
+        else continue;
+      } else {
+        cj.xi = ci.xi + dcxi;
+      }
+
     for (int dcyi = -1; dcyi <= 1; ++dcyi){
+      if  (ci.yi == 0 and dcyi == -1) {
+        if (pbc_y) cj.yi = n_cells_y -1;
+        else continue;
+      } else if(ci.yi == n_cells_y -1 and dcyi == 1) {
+        if (pbc_y) cj.yi = 0;
+        else continue;
+      } else {
+        cj.yi = ci.yi + dcyi;
+      }
+
     for (int dczi = -1; dczi <= 1; ++dczi){
 
-
-      // loop over paritlces in
-      // cell (ci.x + dcxi, ci.y + dcyi, ci.z + dczi)
-      // taking into account the periodic boundaries
-      if  (ci.xi == 0 and dcxi == -1) {
-         cj.xi = n_cells_x -1;
-      } else if(ci.xi == n_cells_x -1 and dcxi == 1) {
-          cj.xi = 0;
-      } else {
-         cj.xi = ci.xi + dcxi;
-      }
-
-      if  (ci.yi == 0 and dcyi == -1) {
-         cj.yi = n_cells_y -1;
-      } else if(ci.yi == n_cells_y -1 and dcyi == 1) {
-          cj.yi = 0;
-      } else {
-         cj.yi = ci.yi + dcyi;
-      }
-
       if  (ci.zi == 0 and dczi == -1) {
-         cj.zi = n_cells_z -1;
+        if (pbc_z) cj.zi = n_cells_z -1;
+        else continue;
       } else if(ci.zi == n_cells_z -1 and dczi == 1) {
-          cj.zi = 0;
+        if (pbc_z) cj.zi = 0;
+        else continue;
       } else {
-         cj.zi = ci.zi + dczi;
+        cj.zi = ci.zi + dczi;
       }
 
       // loop over list of particles in neighboring cell ci
@@ -166,12 +180,11 @@ VecList get_neighbor_list(
            ++it) {
         
           pj = *it; 
-          if ( (double_bond == false and pi >= pj)
-                or (pi == pj) ) {
+          if ((!double_bond and pi >= pj) or (pi == pj)) {
 
             continue;
-
-          }else if (dist2(positions[pj],positions[pi], Lx, Ly, Lz)
+          
+          }else if (dist2(positions[pj],positions[pi],Lx,Ly,Lz,pbc_x,pbc_y,pbc_z)
                   < r_verlet*r_verlet) {
 
             neighbor_list[pi].push_back(pj);
@@ -190,9 +203,10 @@ VecList get_neighbor_list(
 
 VecList get_verlet_list(
   double Lx, double Ly, double Lz,
+  bool pbc_x, bool pbc_y, bool pbc_z,
+  bool double_bond,
   double r_verlet,
-  const std::vector<Vec3>& positions,
-  bool double_bond)
+  const std::vector<Vec3>& positions)
 {
 
   unsigned int n_particles = positions.size();
@@ -200,15 +214,15 @@ VecList get_verlet_list(
   VecList verlet_list(n_particles);
 
   double dist_sq;
-  for (unsigned int i = 0; i < n_particles; ++i) {
+  for (unsigned int i = 0;     i < n_particles; ++i) {
   for (unsigned int j = i + 1; j < n_particles; ++j) {
 
-    dist_sq = dist2(positions[i], positions[j], Lx, Ly, Lz);
+    dist_sq = dist2(positions[i],positions[j],Lx,Ly,Lz,pbc_x,pbc_y,pbc_z);
     if (dist_sq < r_verlet * r_verlet) {
 
       verlet_list[i].push_back(j);
 
-      if (double_bond == true) {
+      if (double_bond) {
         verlet_list[j].push_back(i);
       }
 

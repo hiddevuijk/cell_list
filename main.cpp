@@ -25,6 +25,7 @@ using namespace std;
 int main()
 {
 
+
   Config params("input.txt");
 
   double Lx =
@@ -35,17 +36,38 @@ int main()
 		params.get_parameter<double>("system_size_z");
 
 
-  double r_verlet = 1.2;
-  bool double_bond = true;
+  double r_verlet = 1.1;
+
+  bool pbc_x = false;
+  bool pbc_y = pbc_x;
+  bool pbc_z = pbc_x;
+
+  bool double_bond = false;
   
   vector<Vec3> positions = read_positions("positions.dat");
-
-  vector<list<unsigned int> > neighbor_list;
-  for (unsigned int i = 0; i < 100; ++i) {
-    //neighbor_list = get_neighbor_list(Lx,Ly,Lz,r_verlet,positions, double_bond);
-    neighbor_list = get_verlet_list(Lx,Ly,Lz,r_verlet,positions,double_bond);
+  
+  for (unsigned int pi = 0; pi < positions.size(); ++pi) {
+    Vec3 pos = positions[pi];
+    if (!pbc_x) {
+      if (pos.x < 0) pos.x = -1 * pos.x;
+      pos.x -= Lx * floor(pos.x / Lx);
+    }
+    if (!pbc_y) {
+      if (pos.y < 0) pos.y = -1 * pos.y;
+      pos.y -= Ly * floor(pos.y / Ly);
+    }
+    if (!pbc_z) {
+      if (pos.z < 0) pos.z = -1 * pos.z;
+      pos.z -= Lz * floor(pos.z / Lz);
+    }
+    positions[pi] = pos;
   }
 
+  vector<list<unsigned int> > neighbor_list;
+  for (unsigned int i = 0; i < 5000; ++i) {
+    //neighbor_list = get_neighbor_list(Lx,Ly,Lz,pbc_x,pbc_y,pbc_z,double_bond,r_verlet,positions);
+    neighbor_list = get_verlet_list(Lx,Ly,Lz,pbc_x,pbc_y,pbc_z,double_bond,r_verlet,positions);
+  }
 
   for (unsigned int i=0 ; i< positions.size(); ++i) {
     cout << i << ": \t"; 
