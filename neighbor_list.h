@@ -200,6 +200,136 @@ VecList get_neighbor_list(
 
 } // end function get_neighbor_list
 
+VecList get_neighbor_list(
+    double Lx, double Ly, double Lz,
+    bool pbc_x, bool pbc_y, bool pbc_z,
+    bool double_bond,
+    double rco,
+    const std::vector<Vec3>& positions)
+{
+
+  unsigned int n_particles = positions.size();
+
+  // for the cell dimension, the smalles size is taken
+  // that is larger than r_verlet, and fits and integer
+  // number of times in the x direction
+  // 
+  // number of cells along the x directon
+  unsigned int n_cells_x = std::floor(Lx / rco);
+  // cell size in the x direction
+  double delta_x = Lx / n_cells_x;
+
+  // same for the y and z direction
+  unsigned int n_cells_y = std::floor(Ly / rco);
+  unsigned int n_cells_z = std::floor(Lz / rco);
+  double delta_y = Ly / n_cells_y;
+  double delta_z = Lz / n_cells_z;
+
+  // list of all neighbor pairs, 
+  VecList neighbor_list(n_particles);
+
+  // a three dimensional array containing lists with the 
+  // particle indices of the particles in that cell
+  Vec3List cell_list(n_cells_x,
+            Vec2List(n_cells_y, VecList(n_cells_z) ) );
+
+  // the i'th element contains the cell index
+  std::vector<TripleIndex> particles_cell_index(n_particles);
+  // generate cell list
+  Vec3 p; // position of particle pi
+  TripleIndex ci; // cell index of particle  pi
+  for (unsigned int pi = 0; pi < n_particles; ++pi) {
+    p = positions[pi]; 
+
+    if (pbc_x) p.x -= Lx * floor( p.x / Lx);
+    if (pbc_y) p.y -= Ly * floor( p.y / Ly);
+    if (pbc_z) p.z -= Lz * floor( p.z / Lz);
+
+    //ci.xi = floor(p.x / delta_x);
+    //ci.yi = floor(p.y / delta_y);
+    //ci.zi = floor(p.z / delta_z);
+
+    ci.xi = static_cast<unsigned int>(p.x / delta_x);
+    ci.yi = static_cast<unsigned int>(p.y / delta_y);
+    ci.zi = static_cast<unsigned int>(p.z / delta_z);
+
+    // add particle pi to cell ci
+    cell_list[ci.xi][ci.yi][ci.zi].push_back(pi);
+    // save cell index ci of particle pi
+    particles_cell_index[pi] = ci;
+
+  } // end loop over particles
+
+  // generate neighbor_list from cell list
+ 
+  // index of particle in neighboring cell
+  // of particle pi
+  unsigned int pj; 
+
+  // loop over particles 
+  TripleIndex cj;
+  for (unsigned int pi = 0; pi < n_particles; ++pi) {
+
+    // cell index of pi
+    ci = particles_cell_index[pi];
+    //loop over cells that are neighbors of ci
+    for (int dcxi = -1; dcxi <= 1; ++dcxi){
+      if  (ci.xi == 0 and dcxi == -1) {
+        if (pbc_x) cj.xi = n_cells_x -1;
+        else continue;
+      } else if(ci.xi == n_cells_x -1 and dcxi == 1) {
+        if (pbc_x) cj.xi = 0;
+        else continue;
+      } else {
+        cj.xi = ci.xi + dcxi;
+      }
+
+    for (int dcyi = -1; dcyi <= 1; ++dcyi){
+      if  (ci.yi == 0 and dcyi == -1) {
+        if (pbc_y) cj.yi = n_cells_y -1;
+        else continue;
+      } else if(ci.yi == n_cells_y -1 and dcyi == 1) {
+        if (pbc_y) cj.yi = 0;
+        else continue;
+      } else {
+        cj.yi = ci.yi + dcyi;
+      }
+
+    for (int dczi = -1; dczi <= 1; ++dczi){
+
+      if  (ci.zi == 0 and dczi == -1) {
+        if (pbc_z) cj.zi = n_cells_z -1;
+        else continue;
+      } else if(ci.zi == n_cells_z -1 and dczi == 1) {
+        if (pbc_z) cj.zi = 0;
+        else continue;
+      } else {
+        cj.zi = ci.zi + dczi;
+      }
+
+      // loop over list of particles in neighboring cell ci
+      for (std::list<unsigned int>::iterator it = 
+           cell_list[cj.xi][cj.yi][cj.zi].begin();
+           it != cell_list[cj.xi][cj.yi][cj.zi].end();
+           ++it) {
+        
+          pj = *it; 
+          if ((!double_bond and pi >= pj) or (pi == pj)) {
+            continue;
+          }else {
+            neighbor_list[pi].push_back(pj);
+          }
+      } // end loop over particles in cell cj
+          
+
+    }}} // end loop over neighboring cells
+
+  } // end loop over particles (pi)
+
+  return neighbor_list;
+
+} // end function get_neighbor_list
+
 
 VecList get_verlet_list(
   double Lx, double Ly, double Lz,
